@@ -1,0 +1,54 @@
+#!cmd.exe
+
+# Set Salesforce credentials
+USERNAME="amadhusudhan369@gmail.com.dev"
+PASSWORD="Madhu@1234"
+TOKEN="PCzoIBaQY72CgHAgKoWyLd9Mm"
+SERVERURL="https://login.salesforce.com"  # or use sandbox URL if deploying to sandbox
+
+# Set package.xml path
+PACKAGE_XML_PATH="package.xml"
+
+# Set test run level
+TEST_RUN_LEVEL="NoTestRun"  # Default test run level
+
+# Set run specified tests
+RUN_SPECIFIED_TESTS="false"  # Default: do not run specified tests
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Validate Metadata') {
+            steps {
+                echo 'Validating Salesforce metadata...'
+                sh '''
+                    sfdx force:mdapi:deploy -u "$USERNAME" -f "$PACKAGE_XML_PATH" -w 10 -l "$TEST_RUN_LEVEL" -c -r true -s "$SERVERURL" -k "$PASSWORD$TOKEN"
+                '''
+                // Check validation result
+                script {
+                    if (currentBuild.result != 'SUCCESS') {
+                        error('Validation failed. Exiting script.')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy Metadata') {
+            steps {
+                echo 'Deploying Salesforce metadata...'
+                sh '''
+                    sfdx force:mdapi:deploy -u "$USERNAME" -f "$PACKAGE_XML_PATH" -w 10 -l "$TEST_RUN_LEVEL" -c -r false -s "$SERVERURL" -k "$PASSWORD$TOKEN" -t "$RUN_SPECIFIED_TESTS"
+                '''
+                // Check deployment result
+                script {
+                    if (currentBuild.result != 'SUCCESS') {
+                        error('Deployment failed. Exiting script.')
+                    } else {
+                        echo 'Deployment completed successfully.'
+                    }
+                }
+            }
+        }
+    }
+}
